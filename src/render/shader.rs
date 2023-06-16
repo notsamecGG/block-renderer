@@ -5,8 +5,6 @@ pub struct Shader {
 
     vertex_entry: &'static str,
     fragment_entry: &'static str,
-
-    vertex_buffers_layout: [wgpu::VertexBufferLayout],
 }
 
 impl Shader {
@@ -20,10 +18,6 @@ impl Shader {
 
     pub fn fragment_entry(&self) -> &str {
         self.fragment_entry
-    }
-
-    pub fn vertex_buffers_layout(&self) -> &[wgpu::VertexBufferLayout] {
-        &self.vertex_buffers_layout
     }
 }
 
@@ -47,7 +41,6 @@ impl Shader {
             module,
             vertex_entry,
             fragment_entry,
-            vertex_buffers_layout,
         }
     }
 }

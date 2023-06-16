@@ -10,6 +10,9 @@ pub use primitives::*;
 pub mod render;
 pub use render::*;
 
+pub mod instance;
+pub use instance::*;
+
 pub async fn init() {
     env_logger::init();
 
