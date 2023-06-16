@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, QuadInstance};
+use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES};
 
 
 pub struct Renderer {
@@ -104,9 +104,9 @@ impl Renderer {
                     ops: wgpu::Operations { 
                         load: wgpu::LoadOp::Clear(
                             wgpu::Color { 
-                                r: 0.1, 
-                                g: 0.2, 
-                                b: 0.3, 
+                                r: 0.03, 
+                                g: 0.04, 
+                                b: 0.1, 
                                 a: 1.0 
                             }
                         ), 

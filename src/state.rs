@@ -1,5 +1,4 @@
 pub struct HardwareState {
-    instance: wgpu::Instance,
     adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -60,7 +59,6 @@ impl HardwareState {
         let surface_format = configure_surface(&device, &surface, &adapter, window.inner_size());
 
         Self {
-            instance,
             adapter,
             device,
             queue,
@@ -70,8 +68,8 @@ impl HardwareState {
         }
     }
 
-    pub fn resize(&mut self) {
-        self.surface_format = configure_surface(&self.device, &self.surface, &self.adapter, self.window.inner_size());
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.surface_format = configure_surface(&self.device, &self.surface, &self.adapter, size);
     }
 
 }
