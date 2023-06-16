@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 bytemuck = { version = "1.13.1", features = ["derive"] }
 env_logger = "0.10.0"
-glam = { version = "0.24.0", features = ["core-simd", "bytemuck", "fast-math"] }
+glam = { version = "0.24.0", features = ["bytemuck", "fast-math"] }
+log = "0.4.19"
 pollster = "0.3.0"
 wgpu = "0.16.1"
 winit = "0.28.6"

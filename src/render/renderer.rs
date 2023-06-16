@@ -1,34 +1,24 @@
-use crate::{HardwareState, Shader};
+use wgpu::util::DeviceExt;
 
+use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, QuadInstance};
 
-pub trait Descriptable {
-    const ATTRIBS: [wgpu::VertexAttribute];
-    const STEP_MODE: wgpu::VertexStepMode;
-
-    pub fn desc() -> wgpu::VertexBufferLayout {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: Self::STEP_MODE,
-            attributes: &Self::ATTRIBS,
-        }
-    }
-}
 
 pub struct Renderer {
-    pipeline_layout: wgpu::PipelineLayout,
     render_pipeline: wgpu::RenderPipeline,
 
-    vertex_buffers_layout: [wgpu::VertexBufferLayout],
-    vertex_buffers: [wgpu::Buffer],
-    index_buffer: wgpu::Buffer,
-    bind_groups: [wgpu::BindGroup],
+    vertices_buffer: wgpu::Buffer,
+    indices_buffer: wgpu::Buffer,
+
+    bind_groups: Vec<wgpu::BindGroup>,
+    _sets: Vec<RenderSet>,
 }
 
 impl Renderer {
     pub fn new(
         state: &HardwareState, 
-        bind_group_layout: &wgpu::BindGroupLayout,
-        vertex_descriptors: [impl Descriptable],
+        bind_group_layouts: &[&wgpu::BindGroupLayout],
+        bind_groups: Vec<wgpu::BindGroup>,
+        sets: Vec<RenderSet>,
         shader: &Shader,
     ) -> Self {
         let layout = state.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -37,10 +27,20 @@ impl Renderer {
             push_constant_ranges: &[],
         });
 
-        let vertex_buffers_layout: [wgpu::VertexBufferLayout] = vertex_descriptors
-            .iter()
-            .map(|resource| resource.desc())
-            .collect();
+        // let vertex_layouts = [Vertex::desc(), QuadInstance::desc()];
+        let vertex_layouts = [Vertex::desc()];
+
+        let vertices_buffer = state.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Quad Vertices Buffer"),
+            contents: bytemuck::cast_slice(&QUAD_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let indices_buffer = state.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Quad Indices Buffer"),
+            contents: bytemuck::cast_slice(&QUAD_INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
 
         let render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -48,15 +48,16 @@ impl Renderer {
             vertex: wgpu::VertexState { 
                 module: shader.module(),
                 entry_point: shader.vertex_entry(), 
-                buffers: &vertex_buffers_layout,
+                buffers: &vertex_layouts, // todo: add support of multiple instance buffers for
+                                          // dynamic render distance
             },
             fragment: Some(wgpu::FragmentState { 
                 module: shader.module(), 
                 entry_point: shader.fragment_entry(), 
                 targets: &[Some(wgpu::ColorTargetState { 
-                    format: state.surface_format(),
+                    format: *state.surface_format(),
                     blend: Some(wgpu::BlendState::REPLACE), 
-                    write_mask: wgpu::ColorWrite::ALL 
+                    write_mask: wgpu::ColorWrites::ALL
                 })],
             }),
             primitive: wgpu::PrimitiveState { 
@@ -78,9 +79,11 @@ impl Renderer {
         });
 
         Self {
-            pipeline_layout,
             render_pipeline,
-            vertex_buffers_layout
+            vertices_buffer,
+            indices_buffer,
+            bind_groups,
+            _sets: sets,
         }
     }
 
@@ -101,9 +104,9 @@ impl Renderer {
                     ops: wgpu::Operations { 
                         load: wgpu::LoadOp::Clear(
                             wgpu::Color { 
-                                r: 0.2, 
+                                r: 0.1, 
                                 g: 0.2, 
-                                b: 0.1, 
+                                b: 0.3, 
                                 a: 1.0 
                             }
                         ), 
@@ -114,18 +117,19 @@ impl Renderer {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-
-            for (i, vertex_buffer) in self.vertex_buffers.iter().enumerate() {
-                render_pass.set_vertex_buffer(i, vertex_buffer.slice(..));
-            }
-
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-
-            for (i, bind_group) in self.bind_groups.iter().enumerate() {
+            
+            for bind_group in self.bind_groups.iter() {
                 render_pass.set_bind_group(0, bind_group, &[]);
             }
 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.set_vertex_buffer(0, self.vertices_buffer.slice(..));
+            render_pass.set_index_buffer(self.indices_buffer.slice(..), wgpu::IndexFormat::Uint16);
+
+            // for (i, render_set) in self.sets.iter().enumerate() {
+            //     render_pass.set_vertex_buffer(i + 1, render_set.instances_buffer().slice(..));
+            // }
+
+            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6);
         }
 
         state.queue().submit(std::iter::once(encoder.finish()));

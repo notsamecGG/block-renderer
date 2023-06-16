@@ -57,7 +57,7 @@ impl HardwareState {
             .await
             .unwrap();
 
-        let surface_format = configure_surface(&surface, &adapter, window.inner_size());
+        let surface_format = configure_surface(&device, &surface, &adapter, window.inner_size());
 
         Self {
             instance,
@@ -71,13 +71,13 @@ impl HardwareState {
     }
 
     pub fn resize(&mut self) {
-        self.surface_format = configure_surface(&self.surface, &self.adapter, self.window.inner_size());
+        self.surface_format = configure_surface(&self.device, &self.surface, &self.adapter, self.window.inner_size());
     }
 
 }
 
 
-fn configure_surface(surface: &wgpu::Surface, adapter: &wgpu::Adapter, window_size: winit::dpi::PhysicalSize<u32>) -> wgpu::TextureFormat {
+fn configure_surface(device: &wgpu::Device, surface: &wgpu::Surface, adapter: &wgpu::Adapter, window_size: winit::dpi::PhysicalSize<u32>) -> wgpu::TextureFormat {
     let caps = surface.get_capabilities(adapter);
     let format = caps.formats
         .iter()
@@ -91,9 +91,9 @@ fn configure_surface(surface: &wgpu::Surface, adapter: &wgpu::Adapter, window_si
         height: window_size.height,
         present_mode: caps.present_modes[0],
         alpha_mode: caps.alpha_modes[0],
-        view_formats: [],
+        view_formats: vec![],
     };
 
     surface.configure(&device, &surface_config);
-    format
+    format.clone()
 }

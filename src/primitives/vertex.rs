@@ -14,9 +14,12 @@ impl Vertex {
 }
 
 impl Descriptable for Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute] = wgpu::vertex_attr_array![
-        0 => Float32x3,
-    ];
+    fn attribs() -> &'static [wgpu::VertexAttribute] {
+        wgpu::vertex_attr_array![
+            0 => Float32x3,
+        ].as_slice()
+    }
 
+    const SIZE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
     const STEP_MODE: wgpu::VertexStepMode = wgpu::VertexStepMode::Vertex;
 }
