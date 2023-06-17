@@ -16,6 +16,9 @@ pub use instance::*;
 pub mod camera;
 pub use camera::*;
 
+pub mod texture;
+pub use texture::*;
+
 pub async fn init() {
     env_logger::init();
 
@@ -26,10 +29,10 @@ pub async fn init() {
 
     let mouse_sensitivity = 0.3;
     let player_speed = 10.0;
-    let mut camera = Camera::new(&state, glam::vec3(0.0, 0.0, 10.0), 45.0, 0.1, 100.0, mouse_sensitivity, player_speed);
+    let mut camera = Camera::new(&state, glam::vec3(0.0, 0.0, 10.0), 45.0, 0.1, 10000.0, mouse_sensitivity, player_speed);
     camera.resize(&state);
 
-    let renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader);
+    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 
@@ -45,12 +48,10 @@ pub async fn init() {
                     match event {
                         winit::event::WindowEvent::CloseRequested => *control_flow = winit::event_loop::ControlFlow::Exit,
                         winit::event::WindowEvent::Resized(size) => {
-                            state.resize(size);
-                            camera.resize(&state);
+                            resize(&mut state, &mut camera, &mut renderer, size);
                         },
                         winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            state.resize(new_inner_size.to_owned());
-                            camera.resize(&state);
+                            resize(&mut state, &mut camera, &mut renderer, *new_inner_size);
                         },
                         _ => (),
                     }
@@ -67,8 +68,8 @@ pub async fn init() {
                     Ok(_) => (),
                     // Reconfigure the surface if it's lost or outdated
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        state.resize(state.window().inner_size());
-                        camera.resize(&state);
+                        let size = state.window().inner_size();
+                        resize(&mut state, &mut camera, &mut renderer, size); 
                     },
                     // The system is out of memory
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = winit::event_loop::ControlFlow::Exit,
@@ -82,6 +83,12 @@ pub async fn init() {
             _ => (),
         }
     });
+}
+
+pub fn resize(state: &mut HardwareState, camera: &mut Camera, renderer: &mut Renderer, size: winit::dpi::PhysicalSize<u32>) {
+    state.resize(size);
+    camera.resize(state);
+    renderer.resize(state, size);
 }
 
 pub fn update(

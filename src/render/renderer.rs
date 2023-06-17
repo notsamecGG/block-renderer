@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES};
+use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture};
 
 
 pub struct Renderer {
@@ -8,6 +8,8 @@ pub struct Renderer {
 
     vertices_buffer: wgpu::Buffer,
     indices_buffer: wgpu::Buffer,
+
+    depth_texture: Texture,
 
     bind_groups: Vec<wgpu::BindGroup>,
     _sets: Vec<RenderSet>,
@@ -42,6 +44,8 @@ impl Renderer {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        let depth_texture = Texture::create_depth_texture(state);
+
         let render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&layout),
@@ -69,7 +73,14 @@ impl Renderer {
                 polygon_mode: wgpu::PolygonMode::Fill, 
                 conservative: false 
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState { 
+                format: Texture::DEPTH_FORMAT, 
+                depth_write_enabled: true, 
+                depth_compare: wgpu::CompareFunction::Less, 
+                // todo: read more on these two
+                stencil: wgpu::StencilState::default(), 
+                bias: wgpu::DepthBiasState::default()
+            }),
             multisample: wgpu::MultisampleState { 
                 count: 1, 
                 mask: !0, 
@@ -82,6 +93,7 @@ impl Renderer {
             render_pipeline,
             vertices_buffer,
             indices_buffer,
+            depth_texture,
             bind_groups,
             _sets: sets,
         }
@@ -113,7 +125,14 @@ impl Renderer {
                         store: true
                     }
                 })], 
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment { 
+                    view: self.depth_texture.view(), 
+                    depth_ops: Some(wgpu::Operations { 
+                        load: wgpu::LoadOp::Clear(1.0), 
+                        store: true 
+                    }),
+                    stencil_ops: None
+                }),
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
@@ -129,13 +148,16 @@ impl Renderer {
             //     render_pass.set_vertex_buffer(i + 1, render_set.instances_buffer().slice(..));
             // }
 
-            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6);
+            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6000);
         }
 
         state.queue().submit(std::iter::once(encoder.finish()));
         texture.present();
 
-    Ok(())
+        Ok(())
+    }
 
+    pub fn resize(&mut self, state: &HardwareState, size: winit::dpi::PhysicalSize<u32>) {
+        self.depth_texture.resize_texture(state, size);
     }
 }

@@ -53,23 +53,32 @@ fn vert(
 ) -> VertexOut {
     var output: VertexOut;
 
-    // Add 1 unit to each instance
     var position = model.pos - vec3<f32>(0.5, 0.5, -0.5);
 
-    if (model.instance_index == 1u) {
+    let face_index = model.instance_index % 6u;
+    let cube_index = model.instance_index / 6u;
+
+    let x = f32(cube_index % 10u);
+    let z = f32(cube_index / 10u) % 10.0;
+    let y = f32(cube_index / 100u);
+
+    if (face_index == 1u) {
         position = back_face_rotation * position;  
-    } else if (model.instance_index == 2u) {
+    } else if (face_index == 2u) {
         position = left_face_rotation * position;  
-    } else if (model.instance_index == 3u) {
+    } else if (face_index == 3u) {
         position = right_face_rotation * position;  
-    } else if (model.instance_index == 4u) {
+    } else if (face_index == 4u) {
         position = top_face_rotation * position;  
-    } else if (model.instance_index == 5u) {
+    } else if (face_index == 5u) {
         position = bottom_face_rotation * position;  
     }
 
+    let spacing = 1.2;
+    position += vec3<f32>(1.0 * spacing * x, 1.0 * spacing * y, 1.0 * spacing * z);
+
     output.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
-    output.color = vec3(f32(model.instance_index) / 10.0, 0.0, 0.0);
+    output.color = vec3(f32(face_index) / 10.0, 0.0, 0.0);
 
     return output;
 }
