@@ -30,10 +30,21 @@ pub struct CameraController {
     right: glam::Vec3,
     up: glam::Vec3,
     sensitivity: f32,
+    mouse_limit: f32,
 }
 
 impl CameraController {
-    pub fn new(translation: glam::Vec3, sensitivity: f32, speed: f32) -> Self {
+    /// args: 
+    ///  - mouse limit: the maximum angle the camera can look up or down, 0 to 1.0
+    pub fn new(translation: glam::Vec3, sensitivity: f32, speed: f32, mouse_limit: Option<f32>) -> Self {
+        let mut mouse_limit = mouse_limit.unwrap_or(0.8);
+
+        if mouse_limit < 0.0 {
+            mouse_limit = 0.0;
+        } else if mouse_limit >= 1.0 {
+            mouse_limit = 0.99;
+        }
+
         Self {
             pressed_keys: [false; 6],
             translation,
@@ -42,6 +53,7 @@ impl CameraController {
             right: glam::Vec3::X,
             up: glam::Vec3::Y,
             sensitivity,
+            mouse_limit,
         }
     }
 
@@ -122,7 +134,15 @@ impl CameraController {
 
                 let rotation = (glam::Quat::from_axis_angle(self.right, -pitch_delta.to_radians())  *
                     glam::Quat::from_axis_angle(glam::Vec3::Y, -yaw_delta.to_radians())).normalize();
-                self.forward = rotation * self.forward;
+                let mut forward = rotation * self.forward;
+
+                if forward.y > self.mouse_limit {
+                    forward = glam::vec3(forward.x,  self.mouse_limit, forward.z);
+                } else if forward.y < -self.mouse_limit {
+                    forward = glam::vec3(forward.x, -self.mouse_limit, forward.z);
+                }
+
+                self.forward = forward.normalize();
                 self.right = self.forward.cross(self.up).normalize();
                 true
             },
@@ -218,7 +238,7 @@ impl Camera {
             }
         );
 
-        let camera_controller = CameraController::new(translation, sensitivity, speed);
+        let camera_controller = CameraController::new(translation, sensitivity, speed, None);
 
         Camera {
             fov,

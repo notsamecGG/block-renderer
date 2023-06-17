@@ -29,7 +29,12 @@ pub async fn init() {
 
     let mouse_sensitivity = 0.3;
     let player_speed = 10.0;
-    let mut camera = Camera::new(&state, glam::vec3(0.0, 0.0, 10.0), 45.0, 0.1, 10000.0, mouse_sensitivity, player_speed);
+    let fov = 45.0;
+    let near_plane = 0.1;
+    let far_plane = 100.0;
+    let origin = glam::vec3(0.0, 0.0, 20.0);
+
+    let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed);
     camera.resize(&state);
 
     let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader);
