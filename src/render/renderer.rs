@@ -3,8 +3,23 @@ use wgpu::util::DeviceExt;
 use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture};
 
 
+pub enum PipelineType {
+    Triangle,
+    Line,
+}
+
+impl PipelineType {
+    pub fn toggle(&mut self) {
+        match self {
+            Self::Triangle => *self = Self::Line,
+            Self::Line     => *self = Self::Triangle,
+        }
+    }
+}
+
 pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
+    line_render_pipeline: wgpu::RenderPipeline,
 
     vertices_buffer: wgpu::Buffer,
     indices_buffer: wgpu::Buffer,
@@ -13,6 +28,7 @@ pub struct Renderer {
 
     bind_groups: Vec<wgpu::BindGroup>,
     _sets: Vec<RenderSet>,
+    active_pipeline: PipelineType,
 }
 
 impl Renderer {
@@ -46,7 +62,12 @@ impl Renderer {
 
         let depth_texture = Texture::create_depth_texture(state);
 
-        let render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let fragment_targets = [Some(wgpu::ColorTargetState { 
+            format: *state.surface_format(),
+            blend: Some(wgpu::BlendState::REPLACE), 
+            write_mask: wgpu::ColorWrites::ALL
+        })];
+        let pipeline_descriptor = wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&layout),
             vertex: wgpu::VertexState { 
@@ -58,11 +79,7 @@ impl Renderer {
             fragment: Some(wgpu::FragmentState { 
                 module: shader.module(), 
                 entry_point: shader.fragment_entry(), 
-                targets: &[Some(wgpu::ColorTargetState { 
-                    format: *state.surface_format(),
-                    blend: Some(wgpu::BlendState::REPLACE), 
-                    write_mask: wgpu::ColorWrites::ALL
-                })],
+                targets: &fragment_targets,
             }),
             primitive: wgpu::PrimitiveState { 
                 topology: wgpu::PrimitiveTopology::TriangleList, 
@@ -87,16 +104,42 @@ impl Renderer {
                 alpha_to_coverage_enabled: false
             },
             multiview: None,
+        };
+        let render_pipeline = state.device().create_render_pipeline(&pipeline_descriptor);
+
+        let line_render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            fragment: Some(wgpu::FragmentState {
+                entry_point: "line_frag",
+                ..pipeline_descriptor.fragment.unwrap()
+            }),
+            primitive: wgpu::PrimitiveState {
+                polygon_mode: wgpu::PolygonMode::Line,
+                ..pipeline_descriptor.primitive
+            },
+            ..pipeline_descriptor
         });
 
         Self {
             render_pipeline,
+            line_render_pipeline,
             vertices_buffer,
             indices_buffer,
             depth_texture,
             bind_groups,
             _sets: sets,
+            active_pipeline: PipelineType::Triangle,
         }
+    }
+
+    fn get_active_pipeline(&self) -> &wgpu::RenderPipeline {
+        match self.active_pipeline {
+            PipelineType::Triangle => &self.render_pipeline,
+            PipelineType::Line     => &self.line_render_pipeline,
+        }
+    }
+
+    pub fn toggle_pipeline(&mut self) {
+        self.active_pipeline.toggle();
     }
 
     pub fn render(&self, state: &HardwareState) -> Result<(), wgpu::SurfaceError> {
@@ -135,7 +178,7 @@ impl Renderer {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(self.get_active_pipeline());
             
             for bind_group in self.bind_groups.iter() {
                 render_pass.set_bind_group(0, bind_group, &[]);

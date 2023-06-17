@@ -51,6 +51,7 @@ pub async fn init() {
             } => if window_id == state.window().id() {
                 if !camera.handle_keyboard_input(&event) {
                     match event {
+                        winit::event::WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(&state, &input, control_flow, &mut renderer),
                         winit::event::WindowEvent::CloseRequested => *control_flow = winit::event_loop::ControlFlow::Exit,
                         winit::event::WindowEvent::Resized(size) => {
                             resize(&mut state, &mut camera, &mut renderer, size);
@@ -102,5 +103,20 @@ pub fn update(
     _last_frame_time: &std::time::Instant
 ) {
 
+}
+
+pub fn handle_keyboard_input(
+    _state: &HardwareState, 
+    input: &winit::event::KeyboardInput,
+    control_flow: &mut winit::event_loop::ControlFlow,
+    renderer: &mut Renderer,
+) {
+    if input.state == winit::event::ElementState::Pressed {
+        match input.virtual_keycode {
+            Some(winit::event::VirtualKeyCode::Escape) => *control_flow = winit::event_loop::ControlFlow::Exit,
+            Some(winit::event::VirtualKeyCode::R) => renderer.toggle_pipeline(),
+            _ => (),
+        }
+    }
 }
 
