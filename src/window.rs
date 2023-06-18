@@ -6,5 +6,10 @@ pub fn new_window() -> (winit::event_loop::EventLoop<()>, winit::window::Window)
         .build(&event_loop)
         .unwrap();
 
+    match window.set_cursor_grab(winit::window::CursorGrabMode::Locked) {
+        Ok(_) => (),
+        Err(_) => log::warn!("Unable to grab cursor"),
+    };
+
     (event_loop, window)
 }

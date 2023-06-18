@@ -201,6 +201,8 @@ impl Camera {
         window_size.width as f32 / window_size.height as f32
     }
 
+    /// args: 
+    ///  - mouse_limit: Limits camera's pitch rotation, between 0 and 1. (1 = 90 degrees)
     pub fn new(
         state: &HardwareState,
         translation: glam::Vec3,
@@ -209,6 +211,7 @@ impl Camera {
         far: f32,
         sensitivity: f32,
         speed: f32,
+        mouse_limit: Option<f32>,
     ) -> Self {
         let camera_uniform = CameraUniform::new();
         
@@ -238,7 +241,7 @@ impl Camera {
             }
         );
 
-        let camera_controller = CameraController::new(translation, sensitivity, speed, None);
+        let camera_controller = CameraController::new(translation, sensitivity, speed, mouse_limit);
 
         Camera {
             fov,

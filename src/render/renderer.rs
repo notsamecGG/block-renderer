@@ -26,6 +26,8 @@ pub struct Renderer {
     vertices_buffer: wgpu::Buffer,
     indices_buffer: wgpu::Buffer,
 
+    sample_count: u32,
+    ms_texture: Texture,
     depth_texture: Texture,
 
     bind_groups: Vec<wgpu::BindGroup>,
@@ -122,6 +124,7 @@ impl Renderer {
         sets: Vec<RenderSet>,
         shader: &Shader,
         ui_shader: &Shader,
+        sample_count: u32,
     ) -> Self {
         let layout = state.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
@@ -144,7 +147,7 @@ impl Renderer {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let depth_texture = Texture::create_depth_texture(state);
+        let depth_texture = Texture::create_depth_texture(state, sample_count);
 
         let fragment_targets = [Some(wgpu::ColorTargetState { 
             format: *state.surface_format(),
@@ -184,12 +187,15 @@ impl Renderer {
                 bias: wgpu::DepthBiasState::default()
             }),
             multisample: wgpu::MultisampleState { 
-                count: 1, 
+                count: sample_count, 
                 mask: !0, 
                 alpha_to_coverage_enabled: false
             },
             multiview: None,
         };
+        
+        let ms_texture = Texture::create_texture(state, state.window().inner_size(), state.surface_format().clone(), sample_count, Some("MS texture"));
+        
         let render_pipeline = Self::create_render_pipeline(state, &layout, &vertex_layouts, &pipeline_descriptor);
 
         let line_render_pipeline = Self::create_wireframe_pipeline(state, &layout, &vertex_layouts, &pipeline_descriptor, &fragment_state);
@@ -202,6 +208,8 @@ impl Renderer {
             ui_render_pipeline,
             vertices_buffer,
             indices_buffer,
+            sample_count,
+            ms_texture,
             depth_texture,
             bind_groups,
             _sets: sets,
@@ -232,8 +240,8 @@ impl Renderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor { 
                 label: Some("Render Pass"), 
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment { 
-                    view: &view, 
-                    resolve_target: None, 
+                    view: if self.sample_count == 1 { &view } else { self.ms_texture.view() }, 
+                    resolve_target: if self.sample_count == 1 { None } else { Some(&view) }, 
                     ops: wgpu::Operations { 
                         load: wgpu::LoadOp::Clear(
                             wgpu::Color { 
@@ -289,5 +297,6 @@ impl Renderer {
 
     pub fn resize(&mut self, state: &HardwareState, size: winit::dpi::PhysicalSize<u32>) {
         self.depth_texture.resize_texture(state, size);
+        self.ms_texture.resize_texture(state, size);
     }
 }

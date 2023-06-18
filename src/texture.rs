@@ -1,7 +1,14 @@
 use crate::HardwareState;
 
 
-pub fn create_texture(state: &HardwareState, size: winit::dpi::PhysicalSize<u32>, label: Option<&str>) -> (wgpu::Texture, wgpu::TextureView) {
+pub fn create_texture(
+    state: &HardwareState,
+    size: winit::dpi::PhysicalSize<u32>,
+    format: wgpu::TextureFormat,
+    sample_count: u32,
+    label: Option<&str>
+) -> (wgpu::Texture, wgpu::TextureView) {
+
     let size = wgpu::Extent3d {
         width: size.width,
         height: size.height,
@@ -12,11 +19,11 @@ pub fn create_texture(state: &HardwareState, size: winit::dpi::PhysicalSize<u32>
         label,
         size,
         mip_level_count: 1,
-        sample_count: 1,
+        sample_count,
         dimension: wgpu::TextureDimension::D2,
-        format: Texture::DEPTH_FORMAT,
+        format,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[Texture::DEPTH_FORMAT],
+        view_formats: &[format],
     }; 
 
     let texture = state.device().create_texture(&desc);
@@ -32,8 +39,8 @@ pub struct Texture {
     view: wgpu::TextureView,
     sampler: wgpu::Sampler,
 
-    bind_group: Option<wgpu::BindGroup>,
-    bind_group_layout: Option<wgpu::BindGroupLayout>,
+    format: wgpu::TextureFormat,
+    sample_count: u32,
 }
 
 impl Texture {
@@ -48,22 +55,14 @@ impl Texture {
     pub fn sampler(&self) -> &wgpu::Sampler {
         &self.sampler
     }
-
-    pub fn bind_group(&self) -> Option<&wgpu::BindGroup> {
-        self.bind_group.as_ref()
-    }
-
-    pub fn bind_group_layout(&self) -> Option<&wgpu::BindGroupLayout> {
-        self.bind_group_layout.as_ref()
-    }
 }
 
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 
-    pub fn create_depth_texture(state: &HardwareState) -> Self {
-        let (texture, view) = create_texture(state, state.window().inner_size(), Some("Depth Texture"));
+    pub fn create_depth_texture(state: &HardwareState, sample_count: u32) -> Self {
+        let (texture, view) = create_texture(state, state.window().inner_size(), Self::DEPTH_FORMAT, sample_count, Some("Depth Texture"));
 
         let sampler = state.device().create_sampler(&wgpu::SamplerDescriptor {
             label: Some("Depth Texture Sampler"),
@@ -72,58 +71,42 @@ impl Texture {
             ..Default::default()
         });
         
-        let (bind_group_layout, bind_group) = Self::create_bind_group(state, &view, &sampler, wgpu::TextureSampleType::Depth);
+        // let (bind_group_layout, bind_group) = Self::create_bind_group(state, &view, &sampler, wgpu::TextureSampleType::Depth);
         
         Self { 
             texture, 
             view, 
             sampler,
-            bind_group: Some(bind_group),
-            bind_group_layout: Some(bind_group_layout),
+            format: Self::DEPTH_FORMAT,
+            sample_count
+        }
+    }
+
+    pub fn create_texture(state: &HardwareState, size: winit::dpi::PhysicalSize<u32>, format: wgpu::TextureFormat, sample_count: u32, label: Option<&str>) -> Self {
+        let (texture, view) = create_texture(state, size, format, sample_count, label);
+
+        let sampler = state.device().create_sampler(&wgpu::SamplerDescriptor { 
+            label: Some("Texture Sampler"), 
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        Self { 
+            texture, 
+            view, 
+            sampler,
+            format,
+            sample_count
         }
     }
 
     pub fn resize_texture(&mut self, state: &HardwareState, size: winit::dpi::PhysicalSize<u32>) {
         self.texture.destroy();
         
-        let (texture, view) = create_texture(state, size, Some("Depth Texture"));
+        let (texture, view) = create_texture(state, size, self.format, self.sample_count, Some("Depth Texture"));
 
         self.texture = texture; 
         self.view = view;
     }
-
-    // pub fn create_bind_group(state: &HardwareState, view: &wgpu::TextureView, sampler: &wgpu::Sampler, sample_type: wgpu::TextureSampleType) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
-    //     let layout = state.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor { 
-    //         label: Some("Texture Bind Group Layout"), 
-    //         entries: &[wgpu::BindGroupLayoutEntry {
-    //             binding: 0,
-    //             visibility: wgpu::ShaderStages::FRAGMENT,
-    //             ty: wgpu::BindingType::Texture {
-    //                 multisampled: false,
-    //                 view_dimension: wgpu::TextureViewDimension::D2,
-    //                 sample_type,
-    //             },
-    //             count: None,
-    //         }, wgpu::BindGroupLayoutEntry {
-    //             binding: 1,
-    //             visibility: wgpu::ShaderStages::FRAGMENT,
-    //             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-    //             count: None,
-    //         }],
-    //     });
-    //
-    //     let bind_group = state.device().create_bind_group(&wgpu::BindGroupDescriptor {
-    //         label: Some("Texture Bind Group"),
-    //         layout: &layout,
-    //         entries: &[wgpu::BindGroupEntry {
-    //             binding: 0,
-    //             resource: wgpu::BindingResource::TextureView(view),
-    //         }, wgpu::BindGroupEntry {
-    //             binding: 1,
-    //             resource: wgpu::BindingResource::Sampler(sampler),
-    //         }],
-    //     });
-    //
-    //     (layout, bind_group)
-    // }
 }

@@ -48,7 +48,7 @@ impl HardwareState {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("Device"),
-                    features: wgpu::Features::POLYGON_MODE_LINE | wgpu::Features::POLYGON_MODE_POINT, 
+                    features: wgpu::Features::POLYGON_MODE_LINE | wgpu::Features::POLYGON_MODE_POINT | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES, 
                     limits: wgpu::Limits::default(),
                 },
                 None,

@@ -34,11 +34,13 @@ pub async fn init() {
     let near_plane = 0.1;
     let far_plane = 100.0;
     let origin = glam::vec3(0.0, 0.0, 20.0);
+    let mouse_limit = Some(0.9);
 
-    let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed);
+    let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed, mouse_limit);
     camera.resize(&state);
 
-    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader, &ui_shader);
+    let sample_count = 8;
+    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader, &ui_shader, sample_count);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 
