@@ -21,6 +21,8 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     line_render_pipeline: wgpu::RenderPipeline,
 
+    ui_render_pipeline: wgpu::RenderPipeline,
+
     vertices_buffer: wgpu::Buffer,
     indices_buffer: wgpu::Buffer,
 
@@ -32,12 +34,94 @@ pub struct Renderer {
 }
 
 impl Renderer {
+    fn create_render_pipeline(
+        state: &HardwareState, 
+        layout: &wgpu::PipelineLayout,
+        vertex_layouts: &[wgpu::VertexBufferLayout],
+        pipeline_descriptor: &wgpu::RenderPipelineDescriptor,
+    ) -> wgpu::RenderPipeline {
+        let render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+            label: Some("Render Pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                buffers: &vertex_layouts,
+                ..pipeline_descriptor.vertex.clone()
+            },
+            ..pipeline_descriptor.clone()
+        });
+
+        render_pipeline
+    }
+
+    fn create_wireframe_pipeline(
+        state: &HardwareState,
+        layout: &wgpu::PipelineLayout,
+        vertex_layouts: &[wgpu::VertexBufferLayout],
+        pipeline_descriptor: &wgpu::RenderPipelineDescriptor,
+        fragment_state: &wgpu::FragmentState,
+    ) -> wgpu::RenderPipeline {
+        let line_render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Line Render Pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                buffers: &vertex_layouts,
+                ..pipeline_descriptor.vertex.clone()
+            },
+            fragment: Some(wgpu::FragmentState {
+                entry_point: "line_frag",
+                ..fragment_state.clone()
+            }),
+            primitive: wgpu::PrimitiveState {
+                polygon_mode: wgpu::PolygonMode::Line,
+                ..pipeline_descriptor.primitive.clone()
+            },
+            ..pipeline_descriptor.clone()
+        });
+
+        line_render_pipeline
+    }
+
+    fn create_ui_pipeline(
+        state: &HardwareState,
+        ui_shader: &Shader,
+        pipeline_descriptor: &wgpu::RenderPipelineDescriptor,
+    ) -> wgpu::RenderPipeline {
+        let ui_render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("UI Render Pipeline"),
+            vertex: wgpu::VertexState {
+                module: ui_shader.module(),
+                entry_point: ui_shader.vertex_entry(),
+                buffers: &[Vertex::desc()],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: ui_shader.module(),
+                entry_point: ui_shader.fragment_entry(),
+                targets: &[Some(wgpu::ColorTargetState { 
+                    format: state.surface_format().clone(),
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent { 
+                            src_factor: wgpu::BlendFactor::SrcAlpha, 
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha, 
+                            operation: wgpu::BlendOperation::Add 
+                        },
+                        alpha: wgpu::BlendComponent::OVER,
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            ..pipeline_descriptor.clone()
+        });
+
+        ui_render_pipeline
+    }
+
     pub fn new(
         state: &HardwareState, 
         bind_group_layouts: &[&wgpu::BindGroupLayout],
         bind_groups: Vec<wgpu::BindGroup>,
         sets: Vec<RenderSet>,
         shader: &Shader,
+        ui_shader: &Shader,
     ) -> Self {
         let layout = state.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
@@ -67,20 +151,21 @@ impl Renderer {
             blend: Some(wgpu::BlendState::REPLACE), 
             write_mask: wgpu::ColorWrites::ALL
         })];
+        let fragment_state = wgpu::FragmentState {
+            module: shader.module(),
+            entry_point: shader.fragment_entry(),
+            targets: &fragment_targets,
+        };
         let pipeline_descriptor = wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&layout),
+            label: None,
+            layout: None,
             vertex: wgpu::VertexState { 
                 module: shader.module(),
                 entry_point: shader.vertex_entry(), 
-                buffers: &vertex_layouts, // todo: add support of multiple instance buffers for
+                buffers: &[], // todo: add support of multiple instance buffers for
                                           // dynamic render distance
             },
-            fragment: Some(wgpu::FragmentState { 
-                module: shader.module(), 
-                entry_point: shader.fragment_entry(), 
-                targets: &fragment_targets,
-            }),
+            fragment: Some(fragment_state.clone()),
             primitive: wgpu::PrimitiveState { 
                 topology: wgpu::PrimitiveTopology::TriangleList, 
                 strip_index_format: None, 
@@ -105,23 +190,16 @@ impl Renderer {
             },
             multiview: None,
         };
-        let render_pipeline = state.device().create_render_pipeline(&pipeline_descriptor);
+        let render_pipeline = Self::create_render_pipeline(state, &layout, &vertex_layouts, &pipeline_descriptor);
 
-        let line_render_pipeline = state.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            fragment: Some(wgpu::FragmentState {
-                entry_point: "line_frag",
-                ..pipeline_descriptor.fragment.unwrap()
-            }),
-            primitive: wgpu::PrimitiveState {
-                polygon_mode: wgpu::PolygonMode::Line,
-                ..pipeline_descriptor.primitive
-            },
-            ..pipeline_descriptor
-        });
+        let line_render_pipeline = Self::create_wireframe_pipeline(state, &layout, &vertex_layouts, &pipeline_descriptor, &fragment_state);
+
+        let ui_render_pipeline = Self::create_ui_pipeline(state, ui_shader, &pipeline_descriptor);
 
         Self {
             render_pipeline,
             line_render_pipeline,
+            ui_render_pipeline,
             vertices_buffer,
             indices_buffer,
             depth_texture,
@@ -178,6 +256,7 @@ impl Renderer {
                 }),
             });
 
+            // block rendering
             render_pass.set_pipeline(self.get_active_pipeline());
             
             for bind_group in self.bind_groups.iter() {
@@ -192,6 +271,14 @@ impl Renderer {
             // }
 
             render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6000);
+
+            // UI rendering
+            render_pass.set_pipeline(&self.ui_render_pipeline);
+
+            render_pass.set_vertex_buffer(0, self.vertices_buffer.slice(..));
+            render_pass.set_index_buffer(self.indices_buffer.slice(..), wgpu::IndexFormat::Uint16);
+
+            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6);
         }
 
         state.queue().submit(std::iter::once(encoder.finish()));

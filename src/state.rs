@@ -83,7 +83,7 @@ fn configure_surface(device: &wgpu::Device, surface: &wgpu::Surface, adapter: &w
         .unwrap_or(&caps.formats[0]);
 
     let surface_config = wgpu::SurfaceConfiguration {
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST,
         format: *format,
         width: window_size.width,
         height: window_size.height,

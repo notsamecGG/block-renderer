@@ -31,6 +31,9 @@ pub struct Texture {
     texture: wgpu::Texture,
     view: wgpu::TextureView,
     sampler: wgpu::Sampler,
+
+    bind_group: Option<wgpu::BindGroup>,
+    bind_group_layout: Option<wgpu::BindGroupLayout>,
 }
 
 impl Texture {
@@ -44,6 +47,14 @@ impl Texture {
     
     pub fn sampler(&self) -> &wgpu::Sampler {
         &self.sampler
+    }
+
+    pub fn bind_group(&self) -> Option<&wgpu::BindGroup> {
+        self.bind_group.as_ref()
+    }
+
+    pub fn bind_group_layout(&self) -> Option<&wgpu::BindGroupLayout> {
+        self.bind_group_layout.as_ref()
     }
 }
 
@@ -61,10 +72,14 @@ impl Texture {
             ..Default::default()
         });
         
+        let (bind_group_layout, bind_group) = Self::create_bind_group(state, &view, &sampler, wgpu::TextureSampleType::Depth);
+        
         Self { 
             texture, 
             view, 
-            sampler
+            sampler,
+            bind_group: Some(bind_group),
+            bind_group_layout: Some(bind_group_layout),
         }
     }
 
@@ -76,4 +91,39 @@ impl Texture {
         self.texture = texture; 
         self.view = view;
     }
+
+    // pub fn create_bind_group(state: &HardwareState, view: &wgpu::TextureView, sampler: &wgpu::Sampler, sample_type: wgpu::TextureSampleType) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    //     let layout = state.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor { 
+    //         label: Some("Texture Bind Group Layout"), 
+    //         entries: &[wgpu::BindGroupLayoutEntry {
+    //             binding: 0,
+    //             visibility: wgpu::ShaderStages::FRAGMENT,
+    //             ty: wgpu::BindingType::Texture {
+    //                 multisampled: false,
+    //                 view_dimension: wgpu::TextureViewDimension::D2,
+    //                 sample_type,
+    //             },
+    //             count: None,
+    //         }, wgpu::BindGroupLayoutEntry {
+    //             binding: 1,
+    //             visibility: wgpu::ShaderStages::FRAGMENT,
+    //             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+    //             count: None,
+    //         }],
+    //     });
+    //
+    //     let bind_group = state.device().create_bind_group(&wgpu::BindGroupDescriptor {
+    //         label: Some("Texture Bind Group"),
+    //         layout: &layout,
+    //         entries: &[wgpu::BindGroupEntry {
+    //             binding: 0,
+    //             resource: wgpu::BindingResource::TextureView(view),
+    //         }, wgpu::BindGroupEntry {
+    //             binding: 1,
+    //             resource: wgpu::BindingResource::Sampler(sampler),
+    //         }],
+    //     });
+    //
+    //     (layout, bind_group)
+    // }
 }

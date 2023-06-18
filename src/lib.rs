@@ -26,6 +26,7 @@ pub async fn init() {
     let mut state = HardwareState::new(window).await;
 
     let shader = Shader::new(&state, "res/shader.wgsl", "vert", "frag", Some("shader module"));
+    let ui_shader = Shader::new(&state, "res/ui_shader.wgsl", "vert", "frag", Some("UI shader module"));
 
     let mouse_sensitivity = 0.3;
     let player_speed = 10.0;
@@ -37,7 +38,7 @@ pub async fn init() {
     let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed);
     camera.resize(&state);
 
-    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader);
+    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader, &ui_shader);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 
