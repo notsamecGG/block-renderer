@@ -1,8 +1,5 @@
-pub mod state;
-pub use state::*;
-
-pub mod window;
-pub use window::*;
+pub mod backend;
+pub use backend::*;
 
 pub mod primitives;
 pub use primitives::*;
@@ -10,14 +7,17 @@ pub use primitives::*;
 pub mod render;
 pub use render::*;
 
-pub mod instance;
-pub use instance::*;
-
 pub mod camera;
 pub use camera::*;
 
 pub mod texture;
 pub use texture::*;
+
+pub mod chunk;
+pub use chunk::*;
+
+pub mod bitarrays;
+pub use bitarrays::*;
 
 pub async fn init() {
     env_logger::init();
