@@ -73,9 +73,9 @@ fn vert(
     let face_index = model.instance_index % 6u;
     let cube_index = model.instance_index / 6u;
 
-    let x = f32(cube_index % 10u);
-    let z = f32(cube_index / 10u) % 10.0;
-    let y = f32(cube_index / 100u);
+    let x = f32(cube_index % 16u);
+    let y = f32(cube_index / 256u);
+    let z = f32(cube_index / 16u) % 16.0;
 
     var position = model.pos - vec3<f32>(0.5, 0.5, -0.5);
     var normal = front_face_normal;
@@ -108,7 +108,7 @@ fn vert(
     color.x = min(light_strength + 0.1, 1.0);
     color.y = 0.1;
 
-    let value = bits[0];
+    let value = bits[cube_index / 32u];
     let is_set = check_nth_bit(value, u32(cube_index));
     if is_set {
         color.z = 0.9;

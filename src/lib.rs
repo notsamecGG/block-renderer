@@ -44,9 +44,13 @@ pub async fn init() {
     
     let mut simple_chunk = SimpleChunk::new(&state);
     let mut test_vec = BitVec::new();
+
     for i in 0..1000 {
-        test_vec.push(
-            if i % 3 == 0 { true } else { false });
+        let x = i % 16;
+        let y = i / 256;
+        let z = (i / 16) % 16;
+
+        test_vec.push(if z == 1 { true } else { false });
     }
 
     simple_chunk.write_buffer(&state, test_vec);
