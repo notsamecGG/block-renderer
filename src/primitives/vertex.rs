@@ -1,4 +1,17 @@
-use crate::Descriptable;
+pub trait Descriptable {
+    const STEP_MODE: wgpu::VertexStepMode;
+    const SIZE: wgpu::BufferAddress;
+
+    fn attribs() -> &'static [wgpu::VertexAttribute];
+
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: Self::SIZE,
+            step_mode: Self::STEP_MODE,
+            attributes: Self::attribs(),
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -23,3 +36,4 @@ impl Descriptable for Vertex {
     const SIZE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
     const STEP_MODE: wgpu::VertexStepMode = wgpu::VertexStepMode::Vertex;
 }
+

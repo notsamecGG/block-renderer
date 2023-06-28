@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{HardwareState, Shader, RenderSet, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture};
+use crate::{HardwareState, Shader, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture};
 
 
 pub enum PipelineType {
@@ -31,7 +31,6 @@ pub struct Renderer {
     depth_texture: Texture,
 
     bind_groups: Vec<wgpu::BindGroup>,
-    _sets: Vec<RenderSet>,
     active_pipeline: PipelineType,
 }
 
@@ -121,7 +120,6 @@ impl Renderer {
         state: &HardwareState, 
         bind_group_layouts: &[&wgpu::BindGroupLayout],
         bind_groups: Vec<wgpu::BindGroup>,
-        sets: Vec<RenderSet>,
         shader: &Shader,
         ui_shader: &Shader,
         sample_count: u32,
@@ -212,7 +210,6 @@ impl Renderer {
             ms_texture,
             depth_texture,
             bind_groups,
-            _sets: sets,
             active_pipeline: PipelineType::Triangle,
         }
     }
@@ -267,8 +264,8 @@ impl Renderer {
             // block rendering
             render_pass.set_pipeline(self.get_active_pipeline());
             
-            for bind_group in self.bind_groups.iter() {
-                render_pass.set_bind_group(0, bind_group, &[]);
+            for (index, bind_group) in self.bind_groups.iter().enumerate() {
+                render_pass.set_bind_group(index as _, bind_group, &[]);
             }
 
             render_pass.set_vertex_buffer(0, self.vertices_buffer.slice(..));

@@ -12,8 +12,12 @@ struct CameraUniform {
     view_proj: mat4x4<f32>,
 };
 
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
+
+@group(1) @binding(0)
+var<storage, read> bits: array<u32>;
 
 
 const back_face_rotation = mat3x3<f32>(
@@ -57,6 +61,11 @@ const bottom_face_normal = vec3<f32>(0.0, -1.0, 0.0);
 const light_source = vec3<f32>(0.2, 1.0, 0.3);
 
 
+fn check_nth_bit(value: u32, n: u32) -> bool {
+    return (value & (1u << n)) != 0u;
+}
+
+
 @vertex 
 fn vert(
     model: VertexIn,   
@@ -98,6 +107,12 @@ fn vert(
     let light_strength = (dot(normal, light_source) + 1.0) / 2.0;
     color.x = min(light_strength + 0.1, 1.0);
     color.y = 0.1;
+
+    let value = bits[0];
+    let is_set = check_nth_bit(value, u32(cube_index));
+    if is_set {
+        color.z = 0.9;
+    }
 
     var output: VertexOut;
     output.clip_position = camera.view_proj * vec4<f32>(position, 1.0);

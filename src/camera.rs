@@ -2,6 +2,9 @@ use wgpu::util::DeviceExt;
 
 use crate::HardwareState;
 
+
+const CAMERA_KEY_ROTATION_SENSITIVITY: f32 = 5.0;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
@@ -57,6 +60,21 @@ impl CameraController {
         }
     }
 
+    fn rotate(&mut self, pitch_delta: f32, yaw_delta: f32) {
+        let rotation = (glam::Quat::from_axis_angle(self.right, -pitch_delta.to_radians())  *
+            glam::Quat::from_axis_angle(glam::Vec3::Y, -yaw_delta.to_radians())).normalize();
+        let mut forward = rotation * self.forward;
+
+        if forward.y > self.mouse_limit {
+            forward = glam::vec3(forward.x,  self.mouse_limit, forward.z);
+        } else if forward.y < -self.mouse_limit {
+            forward = glam::vec3(forward.x, -self.mouse_limit, forward.z);
+        }
+
+        self.forward = forward.normalize();
+        self.right = self.forward.cross(self.up).normalize();
+    }
+
     pub fn handle_keyboard_input(&mut self, event: &winit::event::WindowEvent) -> bool {
         match event {
             winit::event::WindowEvent::KeyboardInput { 
@@ -88,6 +106,22 @@ impl CameraController {
                     },
                     Some(winit::event::VirtualKeyCode::LControl) => {
                         self.pressed_keys[5] = is_pressed;
+                        true
+                    },
+                    Some(winit::event::VirtualKeyCode::H) => {
+                        self.rotate(0.0, -CAMERA_KEY_ROTATION_SENSITIVITY);
+                        true
+                    },
+                    Some(winit::event::VirtualKeyCode::J) => {
+                        self.rotate(CAMERA_KEY_ROTATION_SENSITIVITY, 0.0);
+                        true
+                    },
+                    Some(winit::event::VirtualKeyCode::K) => {
+                        self.rotate(-CAMERA_KEY_ROTATION_SENSITIVITY, 0.0);
+                        true
+                    },
+                    Some(winit::event::VirtualKeyCode::L) => {
+                        self.rotate(0.0, CAMERA_KEY_ROTATION_SENSITIVITY);
                         true
                     },
                     _ => false,
@@ -132,18 +166,8 @@ impl CameraController {
                 let pitch_delta = delta.1 as f32 * self.sensitivity;
                 let yaw_delta = delta.0 as f32 * self.sensitivity;
 
-                let rotation = (glam::Quat::from_axis_angle(self.right, -pitch_delta.to_radians())  *
-                    glam::Quat::from_axis_angle(glam::Vec3::Y, -yaw_delta.to_radians())).normalize();
-                let mut forward = rotation * self.forward;
+                self.rotate(pitch_delta, yaw_delta);
 
-                if forward.y > self.mouse_limit {
-                    forward = glam::vec3(forward.x,  self.mouse_limit, forward.z);
-                } else if forward.y < -self.mouse_limit {
-                    forward = glam::vec3(forward.x, -self.mouse_limit, forward.z);
-                }
-
-                self.forward = forward.normalize();
-                self.right = self.forward.cross(self.up).normalize();
                 true
             },
             _ => false,

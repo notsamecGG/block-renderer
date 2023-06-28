@@ -19,6 +19,9 @@ pub use chunk::*;
 pub mod bitarrays;
 pub use bitarrays::*;
 
+use bitvec::prelude::*;
+
+
 pub async fn init() {
     env_logger::init();
 
@@ -38,9 +41,20 @@ pub async fn init() {
 
     let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed, mouse_limit);
     camera.resize(&state);
+    
+    let mut simple_chunk = SimpleChunk::new(&state);
+    let mut test_vec = BitVec::new();
+    for i in 0..1000 {
+        test_vec.push(
+            if i % 3 == 0 { true } else { false });
+    }
+
+    simple_chunk.write_buffer(&state, test_vec);
+
+    let (chunk_group, chunk_layout) = simple_chunk.bind_group(&state);
 
     let sample_count = 8;
-    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout()], vec![camera.create_bind_group(&state)], vec![], &shader, &ui_shader, sample_count);
+    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout(), &chunk_layout], vec![camera.create_bind_group(&state), chunk_group], &shader, &ui_shader, sample_count);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 

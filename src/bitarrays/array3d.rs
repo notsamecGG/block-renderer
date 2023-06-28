@@ -25,6 +25,17 @@ impl ShiftDirection {
             _ => panic!("Invalid shift direction: {}", number),
         }
     }
+
+    pub fn to_number(&self) -> usize {
+        match self {
+            Self::Front => 0,
+            Self::Back => 1,
+            Self::Left => 2,
+            Self::Right => 3,
+            Self::Top => 4,
+            Self::Bottom => 5,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -107,8 +118,8 @@ impl Array3D {
         slice.shift_left(1);
     }
 
-    pub fn get_shifted(&self, shift_direction: ShiftDirection) -> BitVec {
-        if let Some(slice) = &self.shifted[shift_direction as usize] {
+    pub fn get_shifted(&self, shift_direction: &ShiftDirection) -> BitVec {
+        if let Some(slice) = &self.shifted[shift_direction.to_number()] {
             if slice == &self.data {
                 return slice.clone();
             }
@@ -128,7 +139,7 @@ impl Array3D {
     }
 
     pub fn compare_shifted(&self, shift_direction: ShiftDirection) -> BitVec {
-        let mut shifted = self.get_shifted(shift_direction);
+        let mut shifted = self.get_shifted(&shift_direction);
         shifted.bitxor_assign(&self.data);
         shifted.bitand_assign(&self.data);
         shifted
