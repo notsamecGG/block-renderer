@@ -13,6 +13,20 @@ pub enum ShiftDirection {
     Bottom = 5,
 }
 
+impl ShiftDirection {
+    pub fn from_number(number: usize) -> Self {
+        match number {
+            0 => Self::Front,
+            1 => Self::Back,
+            2 => Self::Left,
+            3 => Self::Right,
+            4 => Self::Top,
+            5 => Self::Bottom,
+            _ => panic!("Invalid shift direction: {}", number),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Array3D {
     data: BitVec,
@@ -22,6 +36,8 @@ pub struct Array3D {
 }
 
 impl Array3D {
+    /// Creates a new 3D array with the given size.
+    /// Size is the length of one side of the array cube.
     pub fn new(size: usize) -> Self {
         let data = bitvec![0; size.pow(3)];
         let shifted = vec![None; 6];

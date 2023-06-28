@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use wgpu::util::DeviceExt;
 
-use crate::{QuadInstance, HardwareState};
+use crate::HardwareState;
+
 
 
 pub trait Descriptable {
@@ -17,6 +18,20 @@ pub trait Descriptable {
             step_mode: Self::STEP_MODE,
             attributes: Self::attribs(),
         }
+    }
+}
+
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct QuadInstance { }
+
+impl Descriptable for QuadInstance {
+    const STEP_MODE: wgpu::VertexStepMode = wgpu::VertexStepMode::Instance;
+    const SIZE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
+
+    fn attribs() -> &'static [wgpu::VertexAttribute] {
+        &wgpu::vertex_attr_array![]
     }
 }
 
@@ -94,11 +109,13 @@ impl RenderSet {
         self.instances.remove(index);
     }
 
-    pub fn add_instance(&mut self, instance: QuadInstance) {
+    pub fn add_instance(&mut self) {
+        let instance = QuadInstance {};
         self.instances_queue.push(instance);
     }
 
-    pub fn add_instances(&mut self, mut instances: Vec<QuadInstance>) {
+    pub fn add_instances(&mut self, number: usize) {
+        let mut instances = vec![QuadInstance {}; number];
         self.instances_queue.append(&mut instances);
     }
 
