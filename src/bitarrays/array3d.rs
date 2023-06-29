@@ -88,8 +88,7 @@ impl Array3D {
     }
 
     fn copy_bitvec(&self) -> BitVec {
-        let mut copy = BitVec::new();
-        copy.copy_from_bitslice(self.data.as_bitslice());
+        let copy = BitVec::from_bitslice(self.data.as_bitslice());
         copy
     }
 

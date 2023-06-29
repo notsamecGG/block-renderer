@@ -42,23 +42,21 @@ pub async fn init() {
     let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed, mouse_limit);
     camera.resize(&state);
     
-    let mut simple_chunk = SimpleChunk::new(&state);
-    let mut test_vec = BitVec::new();
-
-    for i in 0..1000 {
-        let x = i % 16;
-        let y = i / 256;
-        let z = (i / 16) % 16;
-
-        test_vec.push(if z == 1 { true } else { false });
+    let mut chunk = Chunk::new(&state, glam::Vec3::ZERO);
+    for z in 0..16 {
+        if z != 1 {
+            continue;
+        }
+        for y in 0..16 {
+            for x in 0..16 {
+                chunk.block_data.set(x, y, 1, true);
+            }
+        }
     }
-
-    simple_chunk.write_buffer(&state, test_vec);
-
-    let (chunk_group, chunk_layout) = simple_chunk.bind_group(&state);
+    chunk.update_faces(&state);
 
     let sample_count = 8;
-    let mut renderer = Renderer::new(&state, &[camera.bind_group_layout(), &chunk_layout], vec![camera.create_bind_group(&state), chunk_group], &shader, &ui_shader, sample_count);
+    let mut renderer = Renderer::new(&state, &[chunk.bind_group_layout(), camera.bind_group_layout()], vec![camera.create_bind_group(&state)], &shader, &ui_shader, sample_count);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 
@@ -91,7 +89,7 @@ pub async fn init() {
                 last_frame_time = std::time::Instant::now();
             }
             winit::event::Event::RedrawRequested(_) => {
-                match renderer.render(&state) {
+                match renderer.render(&state, &[&chunk]) {
                     Ok(_) => (),
                     // Reconfigure the surface if it's lost or outdated
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {

@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{HardwareState, Shader, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture};
+use crate::{HardwareState, Shader, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture, Chunk};
 
 
 pub enum PipelineType {
@@ -225,7 +225,7 @@ impl Renderer {
         self.active_pipeline.toggle();
     }
 
-    pub fn render(&self, state: &HardwareState) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, state: &HardwareState, chunks: &[&Chunk]) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = state.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -265,17 +265,16 @@ impl Renderer {
             render_pass.set_pipeline(self.get_active_pipeline());
             
             for (index, bind_group) in self.bind_groups.iter().enumerate() {
-                render_pass.set_bind_group(index as _, bind_group, &[]);
+                render_pass.set_bind_group((index + 1) as _, bind_group, &[]);
             }
 
             render_pass.set_vertex_buffer(0, self.vertices_buffer.slice(..));
             render_pass.set_index_buffer(self.indices_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            // for (i, render_set) in self.sets.iter().enumerate() {
-            //     render_pass.set_vertex_buffer(i + 1, render_set.instances_buffer().slice(..));
-            // }
-
-            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6000);
+            for chunk in chunks {
+                render_pass.set_bind_group(0, chunk.bind_group(), &[]);
+                render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..chunk.face_count());
+            }
 
             // UI rendering
             render_pass.set_pipeline(&self.ui_render_pipeline);
