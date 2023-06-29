@@ -103,18 +103,57 @@ impl Array3D {
 
     fn get_shifted_top(&self, slice: &mut BitVec) {
         slice.shift_left(self.size);
+
+        for z in 0..16 {
+            for y in 0..16 {
+                for x in 0..16 {
+                    if y == 15 {
+                        slice.set(self.get_index(x, y, z), false);
+                    }
+                }
+            }
+        }
     }
 
     fn get_shifted_bottom(&self, slice: &mut BitVec) {
         slice.shift_right(self.size);
+        for z in 0..16 {
+            for y in 0..16 {
+                for x in 0..16 {
+                    if y == 0 {
+                        slice.set(self.get_index(x, y, z), false);
+                    }
+                }
+            }
+        }
     }
 
     fn get_shifted_left(&self, slice: &mut BitVec) {
-        slice.shift_right(1);
+        slice.shift_left(1);
+
+        for z in 0..16 {
+            for y in 0..16 {
+                for x in 0..16 {
+                    if x == 15 {
+                        slice.set(self.get_index(x, y, z), false);
+                    }
+                }
+            }
+        }
     }
     
     fn get_shifted_right(&self, slice: &mut BitVec) {
-        slice.shift_left(1);
+        slice.shift_right(1);
+        
+        for z in 0..16 {
+            for y in 0..16 {
+                for x in 0..16 {
+                    if x == 0 {
+                        slice.set(self.get_index(x, y, z), false);
+                    }
+                }
+            }
+        }
     }
 
     pub fn get_shifted(&self, shift_direction: &ShiftDirection) -> BitVec {

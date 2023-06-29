@@ -19,7 +19,8 @@ pub use chunk::*;
 pub mod bitarrays;
 pub use bitarrays::*;
 
-use bitvec::prelude::*;
+pub mod chunk_manager;
+pub use chunk_manager::*;
 
 
 pub async fn init() {
@@ -35,28 +36,17 @@ pub async fn init() {
     let player_speed = 10.0;
     let fov = 45.0;
     let near_plane = 0.1;
-    let far_plane = 100.0;
+    let far_plane = 1000.0;
     let origin = glam::vec3(0.0, 0.0, 20.0);
     let mouse_limit = Some(0.9);
 
     let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed, mouse_limit);
     camera.resize(&state);
     
-    let mut chunk = Chunk::new(&state, glam::Vec3::ZERO);
-    for z in 0..16 {
-        if z != 1 {
-            continue;
-        }
-        for y in 0..16 {
-            for x in 0..16 {
-                chunk.block_data.set(x, y, 1, true);
-            }
-        }
-    }
-    chunk.update_faces(&state);
+    let mut chunk_manager = ChunkManager::new(&state, 8);
 
     let sample_count = 8;
-    let mut renderer = Renderer::new(&state, &[chunk.bind_group_layout(), camera.bind_group_layout()], vec![camera.create_bind_group(&state)], &shader, &ui_shader, sample_count);
+    let mut renderer = Renderer::new(&state, &[chunk_manager.chunk_bind_group_layout(), camera.bind_group_layout()], vec![camera.create_bind_group(&state)], &shader, &ui_shader, sample_count);
     let start_time = std::time::Instant::now();
     let mut last_frame_time = start_time;
 
@@ -86,10 +76,11 @@ pub async fn init() {
                 update(&state, &start_time, &last_frame_time);
                 camera.update(&state, last_frame_time.elapsed().as_secs_f32());
                 state.window().request_redraw();
+                chunk_manager.initialize_chunks(&state);
                 last_frame_time = std::time::Instant::now();
             }
             winit::event::Event::RedrawRequested(_) => {
-                match renderer.render(&state, &[&chunk]) {
+                match renderer.render(&state, chunk_manager.visible_chunks(&camera).as_slice()) {
                     Ok(_) => (),
                     // Reconfigure the surface if it's lost or outdated
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {

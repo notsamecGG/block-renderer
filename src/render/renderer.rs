@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::{HardwareState, Shader, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture, Chunk};
+use crate::{HardwareState, Shader, Vertex, Descriptable, QUAD_INDICES, QUAD_VERTICES, Texture, Chunk, QuadInstance};
 
 
 pub enum PipelineType {
@@ -92,7 +92,7 @@ impl Renderer {
             vertex: wgpu::VertexState {
                 module: ui_shader.module(),
                 entry_point: ui_shader.vertex_entry(),
-                buffers: &[Vertex::desc()],
+                buffers: &[Vertex::desc(), QuadInstance::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: ui_shader.module(),
@@ -130,8 +130,8 @@ impl Renderer {
             push_constant_ranges: &[],
         });
 
-        // let vertex_layouts = [Vertex::desc(), QuadInstance::desc()];
-        let vertex_layouts = [Vertex::desc()];
+        let vertex_layouts = [Vertex::desc(), QuadInstance::desc()];
+        // let vertex_layouts = [Vertex::desc()];
 
         let vertices_buffer = state.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Quad Vertices Buffer"),
@@ -273,6 +273,7 @@ impl Renderer {
 
             for chunk in chunks {
                 render_pass.set_bind_group(0, chunk.bind_group(), &[]);
+                render_pass.set_vertex_buffer(1, chunk.instance_buffer().slice(..));
                 render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..chunk.face_count());
             }
 
