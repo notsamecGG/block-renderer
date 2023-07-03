@@ -150,8 +150,8 @@ impl Chunk {
         instances
     }
 
-    pub fn update_faces(&mut self, state: &HardwareState) {
-        let faces = self.block_data.get_faces();
+    pub fn update_faces(&mut self, state: &HardwareState, neighbors: Vec<Option<BitVec>>) {
+        let faces = self.block_data.get_faces(neighbors);
        
         if self.faces[..] == faces[..] {
             return;

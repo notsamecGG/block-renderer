@@ -77,6 +77,14 @@ impl Array3D {
         self.data[index]
     }
 
+    pub fn get_by_ivec(&self, pos: glam::IVec3) -> bool {
+        self.get(pos.x as usize, pos.y as usize, pos.z as usize)
+    }
+
+    pub fn get_by_tuple(&self, pos: (usize, usize, usize)) -> bool {
+        self.get(pos.0, pos.1, pos.2)
+    }
+
     // todo: handle group_len 
     pub fn set(&mut self, x: usize, y: usize, z: usize, value: bool) {
         if x >= self.size || y >= self.size || z >= self.size {
@@ -92,72 +100,54 @@ impl Array3D {
         copy
     }
 
+    fn reset_values_for(&self, slice: &mut BitVec, index_function: fn(usize, usize) -> usize, neighbor: &Option<BitVec>) {
+        for secondary_axis in 0..16 {
+            for primary_axis in 0..16 {
+                let value = if let Some(neighbor) = neighbor { neighbor[secondary_axis * 16 + primary_axis] } else { false };
+                slice.set(index_function(secondary_axis, primary_axis), value);
+            }
+        }
+    }
 
-    fn get_shifted_front(&self, slice: &mut BitVec) {
+    fn get_shifted_front(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_left(self.size.pow(2));
+        
+        self.reset_values_for(slice, |y, x| 16 * 16 * 15 + y * 16 + x, neighbor);
     }
 
-    fn get_shifted_back(&self, slice: &mut BitVec) {
+    fn get_shifted_back(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_right(self.size.pow(2));
+        
+        self.reset_values_for(slice, |y, x| y * 16 + x, neighbor);
     }
 
-    fn get_shifted_top(&self, slice: &mut BitVec) {
+    fn get_shifted_top(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_left(self.size);
 
-        for z in 0..16 {
-            for y in 0..16 {
-                for x in 0..16 {
-                    if y == 15 {
-                        slice.set(self.get_index(x, y, z), false);
-                    }
-                }
-            }
-        }
+        self.reset_values_for(slice, |z, x| 16 * 15 + z * 256 + x, neighbor);
     }
 
-    fn get_shifted_bottom(&self, slice: &mut BitVec) {
+    fn get_shifted_bottom(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_right(self.size);
-        for z in 0..16 {
-            for y in 0..16 {
-                for x in 0..16 {
-                    if y == 0 {
-                        slice.set(self.get_index(x, y, z), false);
-                    }
-                }
-            }
-        }
+
+        self.reset_values_for(slice, |z, x| z * 256 + x, neighbor);
     }
 
-    fn get_shifted_left(&self, slice: &mut BitVec) {
+    fn get_shifted_left(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_left(1);
 
-        for z in 0..16 {
-            for y in 0..16 {
-                for x in 0..16 {
-                    if x == 15 {
-                        slice.set(self.get_index(x, y, z), false);
-                    }
-                }
-            }
-        }
+        self.reset_values_for(slice, |z, y| z * 256 + y * 16, neighbor);
     }
     
-    fn get_shifted_right(&self, slice: &mut BitVec) {
+    fn get_shifted_right(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_right(1);
         
-        for z in 0..16 {
-            for y in 0..16 {
-                for x in 0..16 {
-                    if x == 0 {
-                        slice.set(self.get_index(x, y, z), false);
-                    }
-                }
-            }
-        }
+        self.reset_values_for(slice, |z, y| z * 256 + y * 16 + 15, neighbor);
     }
 
-    pub fn get_shifted(&self, shift_direction: &ShiftDirection) -> BitVec {
+    pub fn get_shifted(&self, shift_direction: &ShiftDirection, neighbors: &Vec<Option<BitVec>>) -> BitVec {
         if let Some(slice) = &self.shifted[shift_direction.to_number()] {
+            // todo: fix this check
             if slice == &self.data {
                 return slice.clone();
             }
@@ -165,32 +155,32 @@ impl Array3D {
 
         let mut slice = self.copy_bitvec();
         match shift_direction {
-            ShiftDirection::Front  => self.get_shifted_front(&mut slice),
-            ShiftDirection::Back   => self.get_shifted_back(&mut slice),
-            ShiftDirection::Left   => self.get_shifted_left(&mut slice),
-            ShiftDirection::Right  => self.get_shifted_right(&mut slice),
-            ShiftDirection::Top    => self.get_shifted_top(&mut slice),
-            ShiftDirection::Bottom => self.get_shifted_bottom(&mut slice),
+            ShiftDirection::Front  => self.get_shifted_front (&mut slice, &neighbors[0]),
+            ShiftDirection::Back   => self.get_shifted_back  (&mut slice, &neighbors[1]),
+            ShiftDirection::Left   => self.get_shifted_left  (&mut slice, &neighbors[2]),
+            ShiftDirection::Right  => self.get_shifted_right (&mut slice, &neighbors[3]),
+            ShiftDirection::Top    => self.get_shifted_top   (&mut slice, &neighbors[4]),
+            ShiftDirection::Bottom => self.get_shifted_bottom(&mut slice, &neighbors[5]),
         }
         
         slice
     }
 
-    pub fn compare_shifted(&self, shift_direction: ShiftDirection) -> BitVec {
-        let mut shifted = self.get_shifted(&shift_direction);
+    pub fn compare_shifted(&self, shift_direction: ShiftDirection, neighbors: &Vec<Option<BitVec>>) -> BitVec {
+        let mut shifted = self.get_shifted(&shift_direction, neighbors);
         shifted.bitxor_assign(&self.data);
         shifted.bitand_assign(&self.data);
         shifted
     }
 
-    pub fn get_faces(&self) -> [BitVec; 6] {
+    pub fn get_faces(&self, neighbors: Vec<Option<BitVec>>) -> [BitVec; 6] {
         [
-            self.compare_shifted(ShiftDirection::Front),
-            self.compare_shifted(ShiftDirection::Back),
-            self.compare_shifted(ShiftDirection::Left),
-            self.compare_shifted(ShiftDirection::Right),
-            self.compare_shifted(ShiftDirection::Top),
-            self.compare_shifted(ShiftDirection::Bottom),
+            self.compare_shifted(ShiftDirection::Front, &neighbors),
+            self.compare_shifted(ShiftDirection::Back, &neighbors),
+            self.compare_shifted(ShiftDirection::Left, &neighbors),
+            self.compare_shifted(ShiftDirection::Right, &neighbors),
+            self.compare_shifted(ShiftDirection::Top, &neighbors),
+            self.compare_shifted(ShiftDirection::Bottom, &neighbors),
         ]
     }
 }
