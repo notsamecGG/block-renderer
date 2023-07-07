@@ -42,7 +42,7 @@ pub struct Chunk {
 
     pub position: glam::IVec3,
     _metadata: RawChunk,
-    metadata_buffer: wgpu::Buffer,
+    _metadata_buffer: wgpu::Buffer,
 }
 
 impl Chunk {
@@ -118,7 +118,7 @@ impl Chunk {
             bind_group,
             position: origin,
             _metadata: metadata,
-            metadata_buffer
+            _metadata_buffer: metadata_buffer
         }
     }
 

@@ -136,13 +136,13 @@ impl Array3D {
     fn get_shifted_left(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_left(1);
 
-        self.reset_values_for(slice, |z, y| z * 256 + y * 16, neighbor);
+        self.reset_values_for(slice, |z, y| z * 256 + y * 16 + 15, neighbor);
     }
     
     fn get_shifted_right(&self, slice: &mut BitVec, neighbor: &Option<BitVec>) {
         slice.shift_right(1);
         
-        self.reset_values_for(slice, |z, y| z * 256 + y * 16 + 15, neighbor);
+        self.reset_values_for(slice, |z, y| z * 256 + y * 16, neighbor);
     }
 
     pub fn get_shifted(&self, shift_direction: &ShiftDirection, neighbors: &Vec<Option<BitVec>>) -> BitVec {

@@ -92,7 +92,7 @@ impl Renderer {
             vertex: wgpu::VertexState {
                 module: ui_shader.module(),
                 entry_point: ui_shader.vertex_entry(),
-                buffers: &[Vertex::desc(), QuadInstance::desc()],
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: ui_shader.module(),
@@ -283,7 +283,7 @@ impl Renderer {
             render_pass.set_vertex_buffer(0, self.vertices_buffer.slice(..));
             render_pass.set_index_buffer(self.indices_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..6);
+            render_pass.draw_indexed(0..QUAD_INDICES.len() as _, 0, 0..1);
         }
 
         state.queue().submit(std::iter::once(encoder.finish()));

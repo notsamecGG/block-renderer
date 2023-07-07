@@ -1,23 +1,23 @@
 use std::collections::{VecDeque, HashMap};
 use bitvec::prelude::*;
 
-use crate::{Chunk, HardwareState, Array3D, ShiftDirection};
+use crate::{Chunk, HardwareState, ShiftDirection};
 
 
-fn check_is_chunk_visible(chunk: &Chunk, camera: &crate::Camera) -> bool {
+fn check_is_chunk_visible(_chunk: &Chunk, _camera: &crate::Camera) -> bool {
     true
 }
 
 pub struct ChunkManager {
-    position: glam::IVec3,
-    view_distance: i32,
+    _position: glam::IVec3,
+    _view_distance: i32,
 
     chunk_positions: HashMap<glam::IVec3, Chunk>,
     chunk_bind_group_layout: wgpu::BindGroupLayout,
 
     active_chunks: VecDeque<glam::IVec3>,
     to_load: VecDeque<glam::IVec3>,
-    to_unload: VecDeque<glam::IVec3>,
+    _to_unload: VecDeque<glam::IVec3>,
 }
 
 impl ChunkManager {
@@ -78,7 +78,9 @@ impl ChunkManager {
         for z in 0..16 {
             for y in 0..16 {
                 for x in 0..16 {
-                    chunk.block_data.set(x, y, z, true);
+                    if x == 0 || y == 0 || x == 15 || y == 15 {
+                        chunk.block_data.set(x, y, z, true);
+                    }
                 }
             }
         }
@@ -150,12 +152,12 @@ impl ChunkManager {
         let chunk_positions = HashMap::from_iter(chunk_positions);
 
         Self {
-            position: glam::IVec3::new(0, 0, 0),
-            view_distance,
+            _position: glam::IVec3::new(0, 0, 0),
+            _view_distance: view_distance,
             chunk_positions,
             active_chunks: VecDeque::new(),
             to_load,
-            to_unload: VecDeque::new(),
+            _to_unload: VecDeque::new(),
             chunk_bind_group_layout,
         }
     }
@@ -166,7 +168,7 @@ impl ChunkManager {
 
         for chunk_position in &self.active_chunks {
             let chunk = self.get_chunk(chunk_position);
-            if check_is_chunk_visible(chunk, camera) {
+            if check_is_chunk_visible(chunk, camera) && chunk.face_count() != 0 {
                 visible_chunks.push(chunk);
             }
         }
@@ -178,7 +180,7 @@ impl ChunkManager {
         self.chunk_positions.get(chunk_position).unwrap()
     }
 
-    fn get_chunk_mut(&mut self, chunk_position: &glam::IVec3) -> &mut Chunk {
+    fn _get_chunk_mut(&mut self, chunk_position: &glam::IVec3) -> &mut Chunk {
         self.chunk_positions.get_mut(chunk_position).unwrap()
     }
 }
