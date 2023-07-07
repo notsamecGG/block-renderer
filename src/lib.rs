@@ -43,7 +43,8 @@ pub async fn init() {
     let mut camera = Camera::new(&state, origin, fov, near_plane, far_plane, mouse_sensitivity, player_speed, mouse_limit);
     camera.resize(&state);
     
-    let mut chunk_manager = ChunkManager::new(&state, 8);
+    let render_distance = 8;
+    let mut chunk_manager = ChunkManager::new(&state, render_distance);
 
     let sample_count = 8;
     let mut renderer = Renderer::new(&state, &[chunk_manager.chunk_bind_group_layout(), camera.bind_group_layout()], vec![camera.create_bind_group(&state)], &shader, &ui_shader, sample_count);

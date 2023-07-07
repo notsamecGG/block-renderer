@@ -1,5 +1,6 @@
 use std::collections::{VecDeque, HashMap};
 use bitvec::prelude::*;
+use noise::NoiseFn;
 
 use crate::{Chunk, HardwareState, ShiftDirection};
 
@@ -18,6 +19,8 @@ pub struct ChunkManager {
     active_chunks: VecDeque<glam::IVec3>,
     to_load: VecDeque<glam::IVec3>,
     _to_unload: VecDeque<glam::IVec3>,
+
+    perlin: noise::Perlin,
 }
 
 impl ChunkManager {
@@ -72,15 +75,22 @@ impl ChunkManager {
         neighbors
     }
 
-    fn initialize_chunk(chunk: &mut Chunk) {
-        // chunk.block_data.set(8, 8, 8, true);
-
+    fn initialize_chunk(chunk: &mut Chunk, perlin: &noise::Perlin) {
         for z in 0..16 {
-            for y in 0..16 {
-                for x in 0..16 {
-                    if x == 0 || y == 0 || x == 15 || y == 15 {
-                        chunk.block_data.set(x, y, z, true);
+            for x in 0..16 {
+                let chunk_position = glam::IVec3::new(x, 0, z);
+                let world_position = chunk.position * 16 + chunk_position;
+                let noise = perlin.get([world_position.x as f64 / 100.0, 0f64, world_position.z as f64 / 100.0]) * 10.0;
+
+                for y in 0..16 {
+                    let block_height = world_position.y + y;
+
+                    if block_height > (noise) as i32 {
+                        continue;
                     }
+
+                    let chunk_position = glam::IVec3::new(x, y, z);
+                    chunk.block_data.set_by_ivec(chunk_position, true);
                 }
             }
         }
@@ -98,7 +108,7 @@ impl ChunkManager {
         for chunk_position in self.to_load.iter() {
             let chunk = self.chunk_positions.get_mut(&chunk_position).unwrap();
 
-            Self::initialize_chunk(chunk);
+            Self::initialize_chunk(chunk, &self.perlin);
         }
 
         for _ in 0..128 {
@@ -110,9 +120,8 @@ impl ChunkManager {
 
             let chunk_position = chunk_position.unwrap();
             let neighbors = self.get_neighbors(chunk_position);
-            let chunk = self.chunk_positions.get_mut(&chunk_position).unwrap();
+            let chunk = self.get_chunk_mut(&chunk_position);
 
-            Self::initialize_chunk(chunk);
             Self::update_faces(state, chunk, neighbors);
 
             self.active_chunks.push_back(chunk_position);
@@ -151,6 +160,8 @@ impl ChunkManager {
         let chunk_positions = chunks.into_iter().map(|chunk| (chunk.position, chunk));
         let chunk_positions = HashMap::from_iter(chunk_positions);
 
+        let perlin = noise::Perlin::new(1);
+
         Self {
             _position: glam::IVec3::new(0, 0, 0),
             _view_distance: view_distance,
@@ -159,6 +170,7 @@ impl ChunkManager {
             to_load,
             _to_unload: VecDeque::new(),
             chunk_bind_group_layout,
+            perlin,
         }
     }
 
@@ -180,7 +192,7 @@ impl ChunkManager {
         self.chunk_positions.get(chunk_position).unwrap()
     }
 
-    fn _get_chunk_mut(&mut self, chunk_position: &glam::IVec3) -> &mut Chunk {
+    fn get_chunk_mut(&mut self, chunk_position: &glam::IVec3) -> &mut Chunk {
         self.chunk_positions.get_mut(chunk_position).unwrap()
     }
 }

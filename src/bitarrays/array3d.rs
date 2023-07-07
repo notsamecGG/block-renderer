@@ -95,6 +95,10 @@ impl Array3D {
         self.data.set(index, value);
     }
 
+    pub fn set_by_ivec(&mut self, pos: glam::IVec3, value: bool) {
+        self.set(pos.x as usize, pos.y as usize, pos.z as usize, value);
+    }
+
     fn copy_bitvec(&self) -> BitVec {
         let copy = BitVec::from_bitslice(self.data.as_bitslice());
         copy
